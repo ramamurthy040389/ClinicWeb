@@ -1,0 +1,157 @@
+﻿@* Views/Shared/_Layout.cshtml *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Clinic Web</title>
+
+    <!-- Bootstrap 5 CSS (matching the Bootstrap 5 JS used below) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet" integrity="" crossorigin="anonymous" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+    <!-- Project CSS (served from wwwroot) -->
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/Clinic.Web.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        @using System.Security.Claims
+        @functions {
+    // Helper to check active controller/action
+    bool IsActive(string ctrl = null, string action = null)
+    {
+        var currentCtrl = ViewContext.RouteData.Values["controller"]?.ToString();
+        var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+        if (!string.IsNullOrEmpty(ctrl) && !string.IsNullOrEmpty(action))
+            return string.Equals(ctrl, currentCtrl, StringComparison.OrdinalIgnoreCase)
+                && string.Equals(action, currentAction, StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(ctrl))
+            return string.Equals(ctrl, currentCtrl, StringComparison.OrdinalIgnoreCase);
+        return false;
+    }
+        }
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4">
+            <div class="container-fluid">
+
+                <!-- Brand -->
+                <a class="navbar-brand d-flex align-items-center" asp-controller="Home" asp-action="Index">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" fill="currentColor" class="bi bi-clinic me-2" viewBox="0 0 16 16">
+                        <path d="M8 0a1 1 0 0 0-1 1v1H2a1 1 0 0 0-1 1v10h14V3a1 1 0 0 0-1-1H9V1a1 1 0 0 0-1-1zM3 3h10v2H3V3z" />
+                    </svg>
+                    <span class="fw-bold">Clinic.Web</span>
+                </a>
+
+                <!-- Toggle -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                        aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Nav content -->
+                <div class="collapse navbar-collapse" id="mainNavbar">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link @((IsActive("Home") ? "active" : ""))" asp-controller="Home" asp-action="Index">
+                                <i class="bi bi-house-door-fill me-1" aria-hidden="true"></i> Home
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link @((IsActive("Booking") ? "active" : ""))" href="/Booking">
+                                <i class="bi bi-calendar-plus-fill me-1" aria-hidden="true"></i> Booking
+                            </a>
+                        </li>
+
+                        @* Admin-only links *@
+                        @if (User?.IsInRole("Admin") == true)
+        {
+                        <li class="nav-item">
+                            <a class="nav-link @((IsActive("Doctors") ? "active" : ""))" asp-controller="Doctors" asp-action="Index">
+                                <i class="bi bi-person-badge-fill me-1" aria-hidden="true"></i> Manage Doctors
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @((IsActive("Admin") ? "active" : ""))" href="/Admin/Appointments">
+                                <i class="bi bi-journal-check me-1" aria-hidden="true"></i> Appointments
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @((IsActive("Patient") ? "active" : ""))" href="/Patient/Search">
+                                <i class="bi bi-search-heart me-1" aria-hidden="true"></i> Patient Search
+                            </a>
+                        </li>
+        }
+                    </ul>
+
+                    <!-- Right side: user/profile -->
+                    <ul class="navbar-nav ms-auto align-items-lg-center">
+
+                        @if (User?.Identity?.IsAuthenticated == true)
+        {
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenu" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-circle fs-5 me-2" aria-hidden="true"></i>
+                                <span class="d-none d-lg-inline">@User.Identity.Name</span>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+                                <li><h6 class="dropdown-header">Signed in as <strong class="d-block">@User.Identity.Name</strong></h6></li>
+                                @if (User.IsInRole("Admin"))
+                    {
+                                <li><span class="dropdown-item-text"><span class="badge bg-success me-1">Admin</span>Full access</span></li>
+                    }
+                                <li><hr class="dropdown-divider" /></li>
+                                @*<li><a class="dropdown-item" asp-controller="Account" asp-action="Profile"><i class="bi bi-person me-2"></i> Profile</a></li>
+                                <li><a class="dropdown-item" asp-controller="Account" asp-action="Settings"><i class="bi bi-gear me-2"></i> Settings</a></li>*@
+                                <li><hr class="dropdown-divider" /></li>
+                                <li>
+                                    <form method="post" asp-controller="Account" asp-action="Logout" class="px-3 py-2">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-outline-secondary w-100">Logout</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+        }
+        else
+        {
+                        <li class="nav-item">
+                            <a class="btn btn-primary btn-sm" asp-controller="Account" asp-action="Login">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Login
+                            </a>
+                        </li>
+        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; @DateTime.Now.Year - Clinic.Web - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+
+    <!-- jQuery (optional) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+
+    <!-- Bootstrap 5 JS bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js" integrity="" crossorigin="anonymous"></script>
+    <script src="~/js/app.js" asp-append-version="true"></script>
+    <!-- Project JS (served from wwwroot) -->
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

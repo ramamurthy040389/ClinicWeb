@@ -1,0 +1,31 @@
+# Build / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+/packages/
+
+# dotnet publish
+publish/
+
+# Rider and VSCode
+.vscode/
+
+# IIS
+appsettings.*.json   # if you keep environment-specific secrets locally, consider ignoring them
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

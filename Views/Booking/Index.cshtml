@@ -1,0 +1,59 @@
+@{
+    ViewData["Title"] = "Booking";
+}
+<div class="container mt-4">
+    <h2 class="mb-3">Book Appointment</h2>
+
+    <div class="card p-3 mb-4">
+        <form id="bookingForm" class="row g-3">
+
+            <div class="col-md-4">
+                <label class="form-label">Doctor</label>
+                <select id="doctorSelect" class="form-select" required></select>
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input type="date" id="date" class="form-control" required />
+            </div>
+
+            <div class="col-md-3">
+                <label class="form-label">Selected Time</label>
+                <input type="time" id="time" class="form-control" required />
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label">Duration (minutes)</label>
+                <input type="number" id="duration" class="form-control" value="30" min="5" required />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">Patient Name</label>
+                <input type="text" id="patientName" class="form-control" required />
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Phone</label>
+                <input type="text" id="phone" class="form-control" required />
+            </div>
+
+            <!-- Hidden: selected slot ISO -->
+            <input type="hidden" id="selectedSlotIso" />
+
+            <div class="col-12 mt-3">
+                <button type="submit" class="btn btn-primary">Book Appointment</button>
+                @*<span id="bookingResult" class="ms-3 fw-bold"></span>*@
+                <div id="bookingResult" class="ms-3 mt-2" role="alert" aria-live="polite"></div>
+
+            </div>
+        </form>
+    </div>
+
+    <div class="card p-3">
+        <h4>Available Slots</h4>
+        <p class="text-muted">Click a slot to auto-fill the time field.</p>
+        <div id="availableSlots" class="mt-2"></div>
+    </div>
+</div>
+
+<script src="~/js/app.js"></script>

@@ -1,0 +1,45 @@
+@{
+    ViewData["Title"] = "Manage Doctors";
+}
+<div class="container mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Doctors</h2>
+        <button id="btnNewDoctor" class="btn btn-primary">New Doctor</button>
+    </div>
+
+    <div id="doctorsList" class="list-group"></div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="doctorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="doctorForm">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalTitle">New Doctor</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="doctorId" />
+                        <div class="mb-3">
+                            <label class="form-label">Name</label>
+                            <input id="doctorName" class="form-control" required maxlength="120" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Specialization</label>
+                            <input id="doctorSpec" class="form-control" required maxlength="80" />
+                        </div>
+                        <div id="doctorError" class="text-danger"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/doctors.js" asp-append-version="true"></script>
+}
