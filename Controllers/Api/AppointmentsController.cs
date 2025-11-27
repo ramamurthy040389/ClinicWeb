@@ -259,19 +259,12 @@ namespace Clinic.Web.Controllers.Api
                         return BadRequest("File number already in use.");
                 }
 
-                var newPatient = new Patient
-                {
-                    Name = resolvedName,
-                    Phone = resolvedPhone,
-                    Address = resolvedAddress,
-                    Gender = resolvedGender,
-                    DateOfBirth = resolvedDob,
-                    FileNo = resolvedFileNo
-                };
-
-                _db.Patients.Add(newPatient);
-                appt.Patient = newPatient;
-                appt.PatientId = newPatient.Id;
+                existing.Name = resolvedName;
+                existing.Address = resolvedAddress;
+                existing.Gender = resolvedGender;
+                existing.Phone = resolvedPhone;
+                existing.DateOfBirth = resolvedDob;
+                existing.FileNo = resolvedFileNo;
             }
 
             await _db.SaveChangesAsync();
