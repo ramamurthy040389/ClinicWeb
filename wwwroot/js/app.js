@@ -61,14 +61,36 @@ async function initBookingPage() {
         const doctorId = Number(document.getElementById('doctorSelect').value);
         const date = document.getElementById('date').value;
         const time = document.getElementById('time').value;
+        const patientName = document.getElementById('patientName').value.trim();
+        const fileNo = document.getElementById('fileNo').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const address = document.getElementById('address').value.trim();
+        const dob = document.getElementById('dob').value.trim();
+        const gender = document.getElementById('gender').value.trim();
+
+        // Validation
         if (!date || !time) { showResult('Pick date and time'); return; }
+        if (!patientName) { showResult('Please enter patient name'); return; }
+        if (!fileNo) { showResult('Please enter file number'); return; }
+        if (!phone) { showResult('Please enter phone number'); return; }
+        if (!/^\d+$/.test(phone)) { showResult('Phone number must contain digits only (0-9)'); return; }
+        if (!address) { showResult('Please enter address'); return; }
+        if (!dob) { showResult('Please enter date of birth'); return; }
+        if (!gender) { showResult('Please select a gender'); return; }
+
         const startIso = new Date(date + 'T' + time).toISOString();
         const payload = {
-            PatientName: document.getElementById('patientName').value.trim(),
-            Phone: document.getElementById('phone').value.trim(),
-            DoctorId: doctorId,
-            StartTime: startIso,
-            DurationInMinutes: Number(document.getElementById('duration').value)
+            doctorId: doctorId,
+            startTime: startIso,
+            durationInMinutes: Number(document.getElementById('duration').value),
+            patient: {
+                name: patientName,
+                phone: phone,
+                fileNo: fileNo,
+                address: address,
+                dateOfBirth: dob,
+                gender: gender
+            }
         };
         try {
             const res = await fetch('/api/appointments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -111,14 +133,33 @@ async function showAvailableSlots() {
     const date = document.getElementById("date").value;
     const container = document.getElementById("availableSlots");
 
-    container.innerHTML = "";
-    if (!doctorId || !date) return;
+    if (!doctorId || !date) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="bi bi-calendar-x" style="font-size: 3rem;"></i>
+                <p class="mt-2 mb-0">Please select a doctor and date to view available slots</p>
+            </div>
+        `;
+        return;
+    }
 
-    container.innerHTML = "Loading...";
+    container.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2 text-muted">Loading available slots...</p>
+        </div>
+    `;
 
     const resp = await fetch(`/api/doctors/${doctorId}/availabletimes?date=${date}`);
     if (!resp.ok) {
-        container.innerHTML = "Could not load slots";
+        container.innerHTML = `
+            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                <i class="bi bi-exclamation-triangle me-2 fs-5"></i>
+                <div>Could not load available slots. Please try again.</div>
+            </div>
+        `;
         return;
     }
 
@@ -126,13 +167,26 @@ async function showAvailableSlots() {
     const slots = data.availableSlots || data.AvailableSlots || [];
 
     if (!slots.length) {
-        container.innerHTML = "No available slots";
+        container.innerHTML = `
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-calendar-x me-2 fs-5"></i>
+                <div>
+                    <strong>No available slots</strong> for the selected date. Please choose another date.
+                </div>
+            </div>
+        `;
         return;
     }
 
-    container.innerHTML = slots
-        .map(s => `<button type="button" class="btn btn-outline-primary btn-sm m-1 slot-btn" data-iso="${s.iso}">${s.time}</button>`)
-        .join("");
+    container.innerHTML = `
+        <div class="d-flex flex-wrap gap-2">
+            ${slots.map(s => `
+                <button type="button" class="btn btn-outline-primary slot-btn" data-iso="${s.iso}">
+                    <i class="bi bi-clock me-1"></i>${s.time}
+                </button>
+            `).join("")}
+        </div>
+    `;
 
     document.querySelectorAll(".slot-btn").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -159,17 +213,26 @@ async function bookAppointment(e) {
     const timeVal = document.getElementById("time").value;
     const duration = Number(document.getElementById("duration").value);
     const patientName = document.getElementById("patientName").value.trim();
+    const fileNo = document.getElementById("fileNo").value.trim();
     const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const dob = document.getElementById("dob").value.trim();
+    const gender = document.getElementById("gender").value.trim();
 
     const resultEl = document.getElementById("bookingResult");
     resultEl.className = '';
     resultEl.textContent = '';
 
-    // client-side checks (as before)
+    // client-side validation checks
     if (!doctorId) return showError("Please select a doctor.");
     if (!iso && (!dateVal || !timeVal)) return showError("Please select or pick a date and time.");
     if (!patientName) return showError("Please enter patient name.");
+    if (!fileNo) return showError("Please enter file number.");
+    if (!phone) return showError("Please enter phone number.");
     if (!/^\d+$/.test(phone)) return showError("Phone number must contain digits only (0-9).");
+    if (!address) return showError("Please enter address.");
+    if (!dob) return showError("Please enter date of birth.");
+    if (!gender) return showError("Please select a gender.");
 
     // resolve start ISO (prefer selected slot)
     let startIso = iso;
@@ -186,7 +249,14 @@ async function bookAppointment(e) {
         doctorId,
         startTime: startIso,
         durationInMinutes: duration,
-        patient: { name: patientName, phone: phone }
+        patient: {
+            name: patientName,
+            phone: phone,
+            fileNo: fileNo,
+            address: address,
+            dateOfBirth: dob,
+            gender: gender
+        }
     };
 
     try {

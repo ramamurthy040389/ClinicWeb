@@ -66,11 +66,51 @@ namespace Clinic.Web.Services
                 return result;
             }
 
+            if (string.IsNullOrWhiteSpace(req.Patient.FileNo))
+            {
+                result.Success = false;
+                result.Message = "Patient file number is required.";
+                return result;
+            }
+
             if (string.IsNullOrWhiteSpace(req.Patient.Phone))
             {
                 result.Success = false;
                 result.Message = "Patient phone is required.";
                 return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(req.Patient.Address))
+            {
+                result.Success = false;
+                result.Message = "Patient address is required.";
+                return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(req.Patient.DateOfBirth))
+            {
+                result.Success = false;
+                result.Message = "Patient date of birth is required.";
+                return result;
+            }
+
+            if (string.IsNullOrWhiteSpace(req.Patient.Gender))
+            {
+                result.Success = false;
+                result.Message = "Patient gender is required.";
+                return result;
+            }
+
+            // Parse date of birth
+            DateTime dateOfBirth;
+            if (!DateTime.TryParse(req.Patient.DateOfBirth, null, System.Globalization.DateTimeStyles.RoundtripKind, out dateOfBirth))
+            {
+                if (!DateTime.TryParse(req.Patient.DateOfBirth, out dateOfBirth))
+                {
+                    result.Success = false;
+                    result.Message = "Invalid date of birth format. Use ISO format like 1990-01-01.";
+                    return result;
+                }
             }
 
             // defensive phone normalization: keep digits only
@@ -140,13 +180,10 @@ namespace Clinic.Web.Services
             }
 
             // Insert or reuse patient record.
-            // Prefer matching by FileNo if provided, otherwise match by phone (digits) or create new.
+            // Prefer matching by FileNo (required field), otherwise match by phone (digits) or create new.
             Patient patient = null;
 
-            if (!string.IsNullOrWhiteSpace(req.Patient.FileNo))
-            {
-                patient = await _db.Patients.FirstOrDefaultAsync(p => p.FileNo == req.Patient.FileNo);
-            }
+            patient = await _db.Patients.FirstOrDefaultAsync(p => p.FileNo == req.Patient.FileNo);
 
             if (patient == null)
             {
@@ -158,9 +195,12 @@ namespace Clinic.Web.Services
             {
                 patient = new Patient
                 {
-                    FileNo = req.Patient.FileNo ?? string.Empty,
+                    FileNo = req.Patient.FileNo.Trim(),
                     Name = req.Patient.Name.Trim(),
-                    Phone = phoneDigits
+                    Phone = phoneDigits,
+                    Address = req.Patient.Address.Trim(),
+                    DateOfBirth = dateOfBirth.Date,
+                    Gender = req.Patient.Gender.Trim()
                 };
                 _db.Patients.Add(patient);
                 await _db.SaveChangesAsync();
@@ -177,6 +217,21 @@ namespace Clinic.Web.Services
                 if (string.IsNullOrWhiteSpace(patient.Phone) && !string.IsNullOrWhiteSpace(phoneDigits))
                 {
                     patient.Phone = phoneDigits;
+                    changed = true;
+                }
+                if (string.IsNullOrWhiteSpace(patient.Address) && !string.IsNullOrWhiteSpace(req.Patient.Address))
+                {
+                    patient.Address = req.Patient.Address.Trim();
+                    changed = true;
+                }
+                if (patient.DateOfBirth == default(DateTime) && dateOfBirth != default(DateTime))
+                {
+                    patient.DateOfBirth = dateOfBirth.Date;
+                    changed = true;
+                }
+                if (string.IsNullOrWhiteSpace(patient.Gender) && !string.IsNullOrWhiteSpace(req.Patient.Gender))
+                {
+                    patient.Gender = req.Patient.Gender.Trim();
                     changed = true;
                 }
                 if (changed)

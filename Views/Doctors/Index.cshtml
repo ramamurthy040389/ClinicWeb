@@ -1,10 +1,15 @@
 @{
     ViewData["Title"] = "Manage Doctors";
 }
-<div class="container mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2>Doctors</h2>
-        <button id="btnNewDoctor" class="btn btn-primary">New Doctor</button>
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-person-badge-fill text-primary me-2" style="font-size: 2rem;"></i>
+            <h2 class="mb-0 fw-bold">Manage Doctors</h2>
+        </div>
+        <button id="btnNewDoctor" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>New Doctor
+        </button>
     </div>
 
     <div id="doctorsList" class="list-group"></div>
@@ -15,7 +20,9 @@
             <div class="modal-content">
                 <form id="doctorForm">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="modalTitle">New Doctor</h5>
+                        <h5 class="modal-title" id="modalTitle">
+                            <i class="bi bi-person-plus me-2"></i>New Doctor
+                        </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">

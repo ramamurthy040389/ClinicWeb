@@ -1,9 +1,105 @@
 ﻿@{
     ViewData["Title"] = "Home";
 }
-<div class="container mt-4">
-    <h1 class="bg-danger">Clinic</h1>
-    <div class="list-group">
-        <a class="list-group-item list-group-item-action" href="/Booking">Booking</a>
+<div class="hero-section text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-3">
+            <i class="bi bi-heart-pulse-fill me-2"></i>Welcome to Clinic.Web
+        </h1>
+        <p class="lead mb-4">Your trusted healthcare partner for easy appointment booking and management</p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap">
+            <a href="/Booking" class="btn btn-light btn-lg">
+                <i class="bi bi-calendar-plus-fill me-2"></i>Book Appointment
+            </a>
+            @if (User?.IsInRole("Admin") == true)
+            {
+                <a href="/Admin/Appointments" class="btn btn-outline-light btn-lg">
+                    <i class="bi bi-journal-check me-2"></i>Manage Appointments
+                </a>
+            }
+        </div>
     </div>
+</div>
+
+<div class="container">
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="bi bi-calendar-check-fill text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Easy Booking</h5>
+                    <p class="card-text text-muted">Book your appointment online in just a few clicks. Choose your preferred doctor and time slot.</p>
+                    <a href="/Booking" class="btn btn-primary">
+                        <i class="bi bi-arrow-right me-1"></i>Book Now
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="bi bi-person-badge-fill text-success" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">Expert Doctors</h5>
+                    <p class="card-text text-muted">Our team of experienced and qualified doctors are here to provide you with the best care.</p>
+                    @if (User?.IsInRole("Admin") == true)
+                    {
+                        <a href="/Doctors" class="btn btn-success">
+                            <i class="bi bi-arrow-right me-1"></i>Manage Doctors
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="bi bi-clock-history text-info" style="font-size: 3rem;"></i>
+                    </div>
+                    <h5 class="card-title fw-bold">24/7 Availability</h5>
+                    <p class="card-text text-muted">Book appointments anytime, anywhere. Our online system is available 24 hours a day.</p>
+                    <a href="/Booking" class="btn btn-info text-white">
+                        <i class="bi bi-arrow-right me-1"></i>Get Started
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (User?.IsInRole("Admin") == true)
+    {
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-speedometer2 me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="/Admin/Appointments" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-journal-check me-2"></i>View Appointments
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/Doctors" class="btn btn-outline-success w-100">
+                            <i class="bi bi-person-badge me-2"></i>Manage Doctors
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/Patient/Search" class="btn btn-outline-info w-100">
+                            <i class="bi bi-search-heart me-2"></i>Search Patients
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="/Booking" class="btn btn-outline-warning w-100">
+                            <i class="bi bi-calendar-plus me-2"></i>New Booking
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>

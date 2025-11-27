@@ -4,6 +4,8 @@ using Clinic.Web.Services;
 using Clinic.Web.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using System.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,7 +16,12 @@ builder.Services.AddControllersWithViews()
             Newtonsoft.Json.ReferenceLoopHandling.Ignore);
 
 builder.Services.AddDbContext<ClinicContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ClinicConn")));
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("ClinicConn"));
+    // Suppress pending model changes warning - migrations will be applied explicitly
+    options.ConfigureWarnings(warnings => 
+        warnings.Ignore(RelationalEventId.PendingModelChangesWarning));
+});
 
 builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
@@ -43,7 +50,38 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ClinicContext>();
-    db.Database.Migrate();
+    try
+    {
+        // Check if database exists and get pending migrations
+        var pendingMigrations = db.Database.GetPendingMigrations().ToList();
+        if (pendingMigrations.Any())
+        {
+            Console.WriteLine($"Applying {pendingMigrations.Count} pending migration(s): {string.Join(", ", pendingMigrations)}");
+            db.Database.Migrate();
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Migration error: {ex.Message}");
+        // In development, try to create database if it doesn't exist
+        if (app.Environment.IsDevelopment())
+        {
+            try
+            {
+                db.Database.EnsureCreated();
+                Console.WriteLine("Database created using EnsureCreated()");
+            }
+            catch (Exception ex2)
+            {
+                Console.WriteLine($"Failed to create database: {ex2.Message}");
+                throw;
+            }
+        }
+        else
+        {
+            throw;
+        }
+    }
 
     if (!db.Doctors.Any())
     {

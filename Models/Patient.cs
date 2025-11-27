@@ -6,6 +6,9 @@ namespace Clinic.Web.Models
         public string FileNo { get; set; } = null!;
         public string Name { get; set; } = null!;
         public string Phone { get; set; } = null!;
+        public string Address { get; set; } = null!;
+        public DateTime DateOfBirth { get; set; }
+        public string Gender { get; set; } = null!;
         public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     }
 }

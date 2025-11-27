@@ -2,25 +2,39 @@
     ViewData["Title"] = "Admin Login";
     var returnUrl = ViewData["ReturnUrl"] as string ?? Url.Action("Appointments", "Admin");
 }
-<h2>Admin Login</h2>
-
-<div class="row">
-    <div class="col-md-4">
-        <form method="post" asp-controller="Account" asp-action="Login">
-            <input type="hidden" name="returnUrl" value="@returnUrl" />
-            <div class="mb-3">
-                <label class="form-label">Username</label>
-                <input name="username" class="form-control" required />
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-lg">
+                <div class="card-header text-center">
+                    <h3 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Admin Login</h3>
+                    <small class="text-white-50">Sign in to access the admin panel</small>
+                </div>
+                <div class="card-body p-4">
+                    <form method="post" asp-controller="Account" asp-action="Login">
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-person me-1"></i>Username</label>
+                            <input name="username" class="form-control" placeholder="Enter your username" required autofocus />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><i class="bi bi-key me-1"></i>Password</label>
+                            <input name="password" type="password" class="form-control" placeholder="Enter your password" required />
+                        </div>
+                        @if (!ViewData.ModelState.IsValid)
+                        {
+                            <div class="alert alert-danger" role="alert">
+                                <i class="bi bi-exclamation-triangle me-2"></i>@Html.ValidationSummary()
+                            </div>
+                        }
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-box-arrow-in-right me-2"></i>Login
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Password</label>
-                <input name="password" type="password" class="form-control" required />
-            </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-            @if (!ViewData.ModelState.IsValid)
-      {
-            <div class="text-danger mt-2">@Html.ValidationSummary()</div>
-      }
-        </form>
+        </div>
     </div>
 </div>

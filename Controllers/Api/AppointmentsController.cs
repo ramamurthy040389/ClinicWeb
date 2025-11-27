@@ -1,6 +1,7 @@
 using Clinic.Web.Data;
 using Clinic.Web.Models.DTOs;
 using Clinic.Web.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.RegularExpressions;
@@ -9,6 +10,7 @@ namespace Clinic.Web.Controllers.Api
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")]
     public class AppointmentsController : ControllerBase
     {
         private readonly ClinicContext _db;
@@ -63,7 +65,8 @@ namespace Clinic.Web.Controllers.Api
             var items = await baseQuery
                 .Skip((q.Page - 1) * q.PageSize)
                 .Take(q.PageSize)
-                .Select(a => new {
+                .Select(a => new
+                {
                     a.Id,
                     StartTime = a.StartTime,
                     a.DurationInMinutes,
@@ -85,8 +88,10 @@ namespace Clinic.Web.Controllers.Api
 
         // ------------------------------------------------------------------
         // POST with validation: phone-only-digits, date must be future
+        // Public endpoint for booking (no admin required)
         // ------------------------------------------------------------------
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> Book([FromBody] BookingRequest req)
         {
             if (req == null)
@@ -127,6 +132,89 @@ namespace Clinic.Web.Controllers.Api
                 return BadRequest(res.Message);
 
             return CreatedAtAction(nameof(GetAll), new { id = res.AppointmentId }, new { appointmentId = res.AppointmentId });
+        }
+
+        // GET /api/appointments/{id}
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> Get(int id)
+        {
+            var appt = await _db.Appointments
+                .Include(a => a.Doctor)
+                .Include(a => a.Patient)
+                .Where(a => a.Id == id)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.DoctorId,
+                    DoctorName = a.Doctor.Name,
+                    a.PatientId,
+                    PatientName = a.Patient.Name,
+                    PatientFileNo = a.Patient.FileNo,
+                    PatientPhone = a.Patient.Phone,
+                    PatientAddress = a.Patient.Address,
+                    PatientDateOfBirth = a.Patient.DateOfBirth,
+                    PatientGender = a.Patient.Gender,
+                    StartTime = a.StartTime,
+                    a.DurationInMinutes
+                })
+                .FirstOrDefaultAsync();
+
+            if (appt == null) return NotFound();
+            return Ok(appt);
+        }
+
+        // PUT /api/appointments/{id}
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, [FromBody] AppointmentUpdateRequest req)
+        {
+            if (req == null) return BadRequest("Request is required.");
+
+            var appt = await _db.Appointments
+                .Include(a => a.Doctor)
+                .Include(a => a.Patient)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (appt == null) return NotFound("Appointment not found.");
+
+            // Validate doctor exists
+            if (req.DoctorId.HasValue && req.DoctorId.Value != appt.DoctorId)
+            {
+                var doctor = await _db.Doctors.FindAsync(req.DoctorId.Value);
+                if (doctor == null) return BadRequest("Doctor not found.");
+                appt.DoctorId = req.DoctorId.Value;
+            }
+
+            // Validate start time
+            if (req.StartTime.HasValue)
+            {
+                var newStart = req.StartTime.Value;
+                if (newStart <= DateTime.Now)
+                    return BadRequest("Appointment time must be in the future.");
+
+                // Check for overlaps (excluding current appointment)
+                var requestedEnd = newStart.AddMinutes(req.DurationInMinutes ?? appt.DurationInMinutes);
+                var overlap = await _db.Appointments.AnyAsync(a =>
+                    a.Id != id &&
+                    a.DoctorId == (req.DoctorId ?? appt.DoctorId) &&
+                    a.StartTime < requestedEnd &&
+                    a.StartTime.AddMinutes(a.DurationInMinutes) > newStart);
+
+                if (overlap)
+                    return BadRequest("Requested time overlaps an existing appointment.");
+
+                appt.StartTime = newStart;
+            }
+
+            // Validate duration
+            if (req.DurationInMinutes.HasValue)
+            {
+                if (req.DurationInMinutes.Value <= 0)
+                    return BadRequest("Duration must be greater than zero.");
+                appt.DurationInMinutes = req.DurationInMinutes.Value;
+            }
+
+            await _db.SaveChangesAsync();
+            return NoContent();
         }
 
         // DELETE

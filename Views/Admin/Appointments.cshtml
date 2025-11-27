@@ -1,18 +1,141 @@
 @using System.Security.Claims
 @{
-    ViewData["Title"] = "Admin Appointments";
+    ViewData["Title"] = "Admin - Appointments";
     var name = User?.Identity?.Name ?? "(anonymous)";
 }
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Admin - Appointments</h2>
-    @*<div>
-        <span class="me-3">Signed in as <strong>@name</strong></span>
-        <form method="post" asp-controller="Account" asp-action="Logout" style="display:inline">
-            <button class="btn btn-outline-secondary btn-sm">Logout</button>
-        </form>
-    </div>*@
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex align-items-center">
+            <i class="bi bi-journal-check text-primary me-2" style="font-size: 2rem;"></i>
+            <h2 class="mb-0 fw-bold">Manage Appointments</h2>
+        </div>
+        <button id="btnNewAppointment" class="btn btn-primary">
+            <i class="bi bi-plus-circle me-2"></i>New Appointment
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4 fade-in">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filter Appointments</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Doctor</label>
+                    <select id="filterDoctor" class="form-select">
+                        <option value="">All Doctors</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Patient Name</label>
+                    <input type="text" id="filterPatient" class="form-control" placeholder="Search patient...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date From</label>
+                    <input type="date" id="filterDateFrom" class="form-control">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Date To</label>
+                    <input type="date" id="filterDateTo" class="form-control">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button id="btnFilter" class="btn btn-primary w-100">
+                        <i class="bi bi-search me-1"></i>Filter
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Appointments List -->
+    <div id="appointmentsList" class="card fade-in">
+        <div class="card-body p-0">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Loading appointments...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    <nav id="paginationNav" class="mt-3"></nav>
 </div>
 
-<div id="adminAppointmentsList"></div>
+<!-- Appointment Modal -->
+<div class="modal fade" id="appointmentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="appointmentForm">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">
+                        <i class="bi bi-calendar-plus me-2"></i>New Appointment
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="appointmentId" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Doctor <span class="text-danger">*</span></label>
+                            <select id="appointmentDoctor" class="form-select" required></select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date <span class="text-danger">*</span></label>
+                            <input type="date" id="appointmentDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Time <span class="text-danger">*</span></label>
+                            <input type="time" id="appointmentTime" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Duration (minutes) <span class="text-danger">*</span></label>
+                            <input type="number" id="appointmentDuration" class="form-control" value="30" min="5" required>
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Patient (File No) <span class="text-danger">*</span></label>
+                            <input type="text" id="appointmentPatientFileNo" class="form-control" placeholder="Enter patient file number" required>
+                            <small class="text-muted">Enter existing patient file number or leave empty to create new</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Patient Name <span class="text-danger">*</span></label>
+                            <input type="text" id="appointmentPatientName" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Phone <span class="text-danger">*</span></label>
+                            <input type="text" id="appointmentPatientPhone" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Gender <span class="text-danger">*</span></label>
+                            <select id="appointmentPatientGender" class="form-select" required>
+                                <option value="">Select...</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Address <span class="text-danger">*</span></label>
+                            <input type="text" id="appointmentPatientAddress" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                            <input type="date" id="appointmentPatientDob" class="form-control" required>
+                        </div>
+                    </div>
+                    <div id="appointmentError" class="text-danger mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 
-<script src="~/js/app.js"></script>
+@section Scripts {
+    <script src="~/js/admin-appointments.js" asp-append-version="true"></script>
+}

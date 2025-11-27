@@ -1,5 +1,6 @@
 using Clinic.Web.Data;
 using Clinic.Web.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
@@ -8,13 +9,15 @@ namespace Clinic.Web.Controllers.Api
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Admin")]
     public class DoctorsController : ControllerBase
     {
         private readonly ClinicContext _db;
         public DoctorsController(ClinicContext db) { _db = db; }
 
-        // GET /api/doctors
+        // GET /api/doctors (public for booking, but CRUD operations require admin)
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll()
         {
             var list = await _db.Doctors
@@ -28,6 +31,7 @@ namespace Clinic.Web.Controllers.Api
 
         // GET /api/doctors/{id}
         [HttpGet("{id:int}")]
+        [AllowAnonymous]
         public async Task<IActionResult> Get(int id)
         {
             var d = await _db.Doctors
@@ -45,7 +49,25 @@ namespace Clinic.Web.Controllers.Api
         public async Task<IActionResult> Create([FromBody] Doctor model)
         {
             if (model == null) return BadRequest("Doctor is required.");
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            // Validate model
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest("Doctor name is required.");
+            if (model.Name.Length < 2 || model.Name.Length > 120)
+                return BadRequest("Doctor name must be between 2 and 120 characters.");
+
+            if (string.IsNullOrWhiteSpace(model.Specialization))
+                return BadRequest("Specialization is required.");
+            if (model.Specialization.Length < 2 || model.Specialization.Length > 80)
+                return BadRequest("Specialization must be between 2 and 80 characters.");
+
+            // Check for duplicate name
+            var exists = await _db.Doctors.AnyAsync(d => d.Name.Trim().ToLower() == model.Name.Trim().ToLower());
+            if (exists)
+                return BadRequest("A doctor with this name already exists.");
+
+            model.Name = model.Name.Trim();
+            model.Specialization = model.Specialization.Trim();
 
             _db.Doctors.Add(model);
             await _db.SaveChangesAsync();
@@ -58,13 +80,28 @@ namespace Clinic.Web.Controllers.Api
         public async Task<IActionResult> Update(int id, [FromBody] Doctor model)
         {
             if (model == null) return BadRequest("Doctor is required.");
-            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var d = await _db.Doctors.FindAsync(id);
             if (d == null) return NotFound();
 
-            d.Name = model.Name;
-            d.Specialization = model.Specialization;
+            // Validate model
+            if (string.IsNullOrWhiteSpace(model.Name))
+                return BadRequest("Doctor name is required.");
+            if (model.Name.Length < 2 || model.Name.Length > 120)
+                return BadRequest("Doctor name must be between 2 and 120 characters.");
+
+            if (string.IsNullOrWhiteSpace(model.Specialization))
+                return BadRequest("Specialization is required.");
+            if (model.Specialization.Length < 2 || model.Specialization.Length > 80)
+                return BadRequest("Specialization must be between 2 and 80 characters.");
+
+            // Check for duplicate name (excluding current doctor)
+            var exists = await _db.Doctors.AnyAsync(doc => doc.Id != id && doc.Name.Trim().ToLower() == model.Name.Trim().ToLower());
+            if (exists)
+                return BadRequest("A doctor with this name already exists.");
+
+            d.Name = model.Name.Trim();
+            d.Specialization = model.Specialization.Trim();
 
             await _db.SaveChangesAsync();
             return NoContent();
@@ -86,9 +123,10 @@ namespace Clinic.Web.Controllers.Api
         }
 
         // ----------------------------------------------------------
-        // NEW: GET /api/doctors/{id}/availabletimes?date=2025-11-26
+        // GET /api/doctors/{id}/availabletimes?date=2025-11-26 (public for booking)
         // ----------------------------------------------------------
         [HttpGet("{id:int}/availabletimes")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAvailableTimes(
             int id,
             [FromQuery] string date,
@@ -118,7 +156,7 @@ namespace Clinic.Web.Controllers.Api
             if (endTs <= startTs) return BadRequest("workEnd must be > workStart");
 
             if (slotMinutes <= 0 || slotMinutes > 240)
-                return BadRequest("slotMinutes must be 1–240");
+                return BadRequest("slotMinutes must be 1ï¿½240");
 
             var dayStart = targetDate.Date + startTs;
             var dayEnd = targetDate.Date + endTs;
