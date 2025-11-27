@@ -1,5 +1,9 @@
+using Microsoft.EntityFrameworkCore;
+
 namespace Clinic.Web.Models
 {
+    // Prevent duplicate appointments for the same doctor at the same start time
+    [Index(nameof(DoctorId), nameof(StartTime), IsUnique = true)]
     public class Appointment
     {
         public int Id { get; set; }
