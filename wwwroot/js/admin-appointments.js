@@ -5,20 +5,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let currentPage = 1;
 let currentFilters = {};
+let appointmentModalInstance = null;
 
 async function initAdminAppointments() {
     await loadDoctors();
     await loadAppointments();
 
     const modalEl = document.getElementById('appointmentModal');
-    const bsModal = new bootstrap.Modal(modalEl);
+    appointmentModalInstance = new bootstrap.Modal(modalEl);
     const form = document.getElementById('appointmentForm');
     const btnNew = document.getElementById('btnNewAppointment');
     const btnFilter = document.getElementById('btnFilter');
 
     btnNew.addEventListener('click', () => {
         openModalForNew();
-        bsModal.show();
+        appointmentModalInstance.show();
     });
 
     btnFilter.addEventListener('click', () => {
@@ -29,9 +30,11 @@ async function initAdminAppointments() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
-            await saveAppointment();
-            bsModal.hide();
-            await loadAppointments();
+            const success = await saveAppointment();
+            if (success) {
+                appointmentModalInstance.hide();
+                await loadAppointments();
+            }
         } catch (err) {
             console.error('Save failed:', err);
         }
@@ -239,8 +242,10 @@ async function onEdit(e, appointments) {
             populateModal(fullAppt);
         }
     }
-    const bsModal = new bootstrap.Modal(document.getElementById('appointmentModal'));
-    bsModal.show();
+    if (!appointmentModalInstance) {
+        appointmentModalInstance = new bootstrap.Modal(document.getElementById('appointmentModal'));
+    }
+    appointmentModalInstance.show();
 }
 
 function populateModal(appt) {
@@ -282,15 +287,15 @@ async function saveAppointment() {
     const address = document.getElementById('appointmentPatientAddress').value.trim();
     const dob = document.getElementById('appointmentPatientDob').value;
 
-    if (!doctorId) { errorEl.innerText = 'Please select a doctor.'; return; }
-    if (!date || !time) { errorEl.innerText = 'Please select date and time.'; return; }
-    if (!duration || duration < 5) { errorEl.innerText = 'Duration must be at least 5 minutes.'; return; }
-    if (!patientName) { errorEl.innerText = 'Patient name is required.'; return; }
-    if (!fileNo) { errorEl.innerText = 'File number is required.'; return; }
-    if (!phone || !/^\d+$/.test(phone)) { errorEl.innerText = 'Valid phone number is required (digits only).'; return; }
-    if (!gender) { errorEl.innerText = 'Gender is required.'; return; }
-    if (!address) { errorEl.innerText = 'Address is required.'; return; }
-    if (!dob) { errorEl.innerText = 'Date of birth is required.'; return; }
+    if (!doctorId) { errorEl.innerText = 'Please select a doctor.'; return false; }
+    if (!date || !time) { errorEl.innerText = 'Please select date and time.'; return false; }
+    if (!duration || duration < 5) { errorEl.innerText = 'Duration must be at least 5 minutes.'; return false; }
+    if (!patientName) { errorEl.innerText = 'Patient name is required.'; return false; }
+    if (!fileNo) { errorEl.innerText = 'File number is required.'; return false; }
+    if (!phone || !/^\d+$/.test(phone)) { errorEl.innerText = 'Valid phone number is required (digits only).'; return false; }
+    if (!gender) { errorEl.innerText = 'Gender is required.'; return false; }
+    if (!address) { errorEl.innerText = 'Address is required.'; return false; }
+    if (!dob) { errorEl.innerText = 'Date of birth is required.'; return false; }
 
     if (id) {
         // Update existing
@@ -311,7 +316,7 @@ async function saveAppointment() {
         if (!r.ok) {
             const txt = await r.text();
             errorEl.innerText = txt || 'Update failed';
-            throw new Error('Update failed');
+            return false;
         }
     } else {
         // Create new - use booking endpoint
@@ -340,9 +345,11 @@ async function saveAppointment() {
         if (!r.ok) {
             const txt = await r.text();
             errorEl.innerText = txt || 'Create failed';
-            throw new Error('Create failed');
+            return false;
         }
     }
+
+    return true;
 }
 
 async function onDelete(e) {
