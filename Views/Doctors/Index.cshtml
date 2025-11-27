@@ -2,17 +2,31 @@
     ViewData["Title"] = "Manage Doctors";
 }
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
         <div class="d-flex align-items-center">
             <i class="bi bi-person-badge-fill text-primary me-2" style="font-size: 2rem;"></i>
             <h2 class="mb-0 fw-bold">Manage Doctors</h2>
         </div>
-        <button id="btnNewDoctor" class="btn btn-primary">
-            <i class="bi bi-plus-circle me-2"></i>New Doctor
-        </button>
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input id="doctorSearch" class="form-control" placeholder="Search by name or specialization">
+            </div>
+            <button id="btnDoctorSearch" class="btn btn-outline-primary">
+                <i class="bi bi-search me-1"></i>Search
+            </button>
+            <button id="btnNewDoctor" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>New Doctor
+            </button>
+        </div>
     </div>
 
-    <div id="doctorsList" class="list-group"></div>
+    <div class="card fade-in mb-3">
+        <div class="card-body">
+            <div id="doctorsList" class="list-group"></div>
+            <nav id="doctorsPagination" class="mt-3"></nav>
+        </div>
+    </div>
 
     <!-- Modal -->
     <div class="modal fade" id="doctorModal" tabindex="-1" aria-hidden="true">

@@ -95,7 +95,7 @@ async function loadAppointments() {
         }
 
         const data = await r.json();
-        const appointments = data.items || [];
+        const appointments = data.items || data.Items || [];
 
         if (appointments.length === 0) {
             listEl.innerHTML = '<div class="card-body text-center py-5"><i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i><p class="mt-3 text-muted">No appointments found</p></div>';
@@ -145,7 +145,7 @@ function appointmentRowHtml(a) {
             <td><strong>${date.toLocaleDateString()}</strong><br><small class="text-muted">${date.toLocaleTimeString()}</small></td>
             <td><i class="bi bi-person-badge text-primary me-1"></i>${escapeHtml(a.doctor)}</td>
             <td><i class="bi bi-person text-success me-1"></i>${escapeHtml(a.patient)}</td>
-            <td><span class="badge bg-secondary">${escapeHtml(a.fileNo)}</span></td>
+            <td><span class="badge bg-secondary">${escapeHtml(a.fileNo || '-')}</span></td>
             <td><i class="bi bi-clock text-info me-1"></i>${a.durationInMinutes} min</td>
             <td>
                 <div class="btn-group" role="group">
@@ -163,7 +163,8 @@ function appointmentRowHtml(a) {
 
 function renderPagination(data) {
     const nav = document.getElementById('paginationNav');
-    if (!data.totalPages || data.totalPages <= 1) {
+    const totalPages = data.totalPages ?? data.TotalPages ?? 0;
+    if (!totalPages || totalPages <= 1) {
         nav.innerHTML = '';
         return;
     }
@@ -187,7 +188,7 @@ function renderPagination(data) {
     }
 
     // Next
-    html += `<li class="page-item ${currentPage === data.totalPages ? 'disabled' : ''}">
+    html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
         <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
     </li>`;
 
@@ -198,7 +199,7 @@ function renderPagination(data) {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const page = parseInt(e.target.getAttribute('data-page'));
-            if (page > 0 && page <= data.totalPages) {
+            if (page > 0 && page <= totalPages) {
                 currentPage = page;
                 loadAppointments();
             }
@@ -291,11 +292,19 @@ async function saveAppointment() {
     if (!date || !time) { errorEl.innerText = 'Please select date and time.'; return false; }
     if (!duration || duration < 5) { errorEl.innerText = 'Duration must be at least 5 minutes.'; return false; }
     if (!patientName) { errorEl.innerText = 'Patient name is required.'; return false; }
-    if (!fileNo) { errorEl.innerText = 'File number is required.'; return false; }
     if (!phone || !/^\d+$/.test(phone)) { errorEl.innerText = 'Valid phone number is required (digits only).'; return false; }
     if (!gender) { errorEl.innerText = 'Gender is required.'; return false; }
     if (!address) { errorEl.innerText = 'Address is required.'; return false; }
     if (!dob) { errorEl.innerText = 'Date of birth is required.'; return false; }
+
+    const patientPayload = {
+        name: patientName,
+        phone: phone,
+        fileNo: fileNo || null,
+        address: address,
+        dateOfBirth: dob,
+        gender: gender
+    };
 
     if (id) {
         // Update existing
@@ -303,7 +312,8 @@ async function saveAppointment() {
         const payload = {
             doctorId: parseInt(doctorId),
             startTime: startIso,
-            durationInMinutes: duration
+            durationInMinutes: duration,
+            patient: patientPayload
         };
 
         const r = await fetch('/api/appointments/' + id, {
@@ -325,14 +335,7 @@ async function saveAppointment() {
             doctorId: parseInt(doctorId),
             startTime: startIso,
             durationInMinutes: duration,
-            patient: {
-                name: patientName,
-                phone: phone,
-                fileNo: fileNo,
-                address: address,
-                dateOfBirth: dob,
-                gender: gender
-            }
+            patient: patientPayload
         };
 
         const r = await fetch('/api/appointments', {

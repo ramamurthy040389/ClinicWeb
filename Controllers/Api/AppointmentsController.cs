@@ -1,4 +1,5 @@
 using Clinic.Web.Data;
+using Clinic.Web.Models;
 using Clinic.Web.Models.DTOs;
 using Clinic.Web.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -188,8 +189,6 @@ namespace Clinic.Web.Controllers.Api
             if (req.StartTime.HasValue)
             {
                 var newStart = req.StartTime.Value;
-                if (newStart <= DateTime.Now)
-                    return BadRequest("Appointment time must be in the future.");
 
                 // Check for overlaps (excluding current appointment)
                 var requestedEnd = newStart.AddMinutes(req.DurationInMinutes ?? appt.DurationInMinutes);
@@ -211,6 +210,68 @@ namespace Clinic.Web.Controllers.Api
                 if (req.DurationInMinutes.Value <= 0)
                     return BadRequest("Duration must be greater than zero.");
                 appt.DurationInMinutes = req.DurationInMinutes.Value;
+            }
+
+            if (req.Patient != null)
+            {
+                var existing = appt.Patient;
+
+                string resolvedName = string.IsNullOrWhiteSpace(req.Patient.Name)
+                    ? existing.Name
+                    : req.Patient.Name.Trim();
+
+                string resolvedAddress = string.IsNullOrWhiteSpace(req.Patient.Address)
+                    ? existing.Address
+                    : req.Patient.Address.Trim();
+
+                string resolvedGender = string.IsNullOrWhiteSpace(req.Patient.Gender)
+                    ? existing.Gender
+                    : req.Patient.Gender.Trim();
+
+                string resolvedPhone = existing.Phone;
+                if (!string.IsNullOrWhiteSpace(req.Patient.Phone))
+                {
+                    var digits = Regex.Replace(req.Patient.Phone, @"\D", "");
+                    if (string.IsNullOrWhiteSpace(digits))
+                        return BadRequest("Patient phone must contain digits.");
+                    resolvedPhone = digits;
+                }
+
+                DateTime resolvedDob = existing.DateOfBirth;
+                if (!string.IsNullOrWhiteSpace(req.Patient.DateOfBirth))
+                {
+                    if (!DateTime.TryParse(req.Patient.DateOfBirth, out resolvedDob))
+                        return BadRequest("Invalid date of birth.");
+                    resolvedDob = resolvedDob.Date;
+                }
+
+                string? resolvedFileNo = req.Patient.FileNo switch
+                {
+                    null => existing.FileNo,
+                    var s when string.IsNullOrWhiteSpace(s) => null,
+                    var s => s.Trim()
+                };
+
+                if (!string.IsNullOrWhiteSpace(resolvedFileNo))
+                {
+                    var exists = await _db.Patients.AnyAsync(p => p.Id != existing.Id && p.FileNo == resolvedFileNo);
+                    if (exists)
+                        return BadRequest("File number already in use.");
+                }
+
+                var newPatient = new Patient
+                {
+                    Name = resolvedName,
+                    Phone = resolvedPhone,
+                    Address = resolvedAddress,
+                    Gender = resolvedGender,
+                    DateOfBirth = resolvedDob,
+                    FileNo = resolvedFileNo
+                };
+
+                _db.Patients.Add(newPatient);
+                appt.Patient = newPatient;
+                appt.PatientId = newPatient.Id;
             }
 
             await _db.SaveChangesAsync();

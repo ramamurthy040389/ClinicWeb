@@ -12,7 +12,7 @@ namespace Clinic.Web.Models.DTOs
     {
         public string Name { get; set; } = null!;
         public string Phone { get; set; } = null!;
-        public string FileNo { get; set; } = null!;
+        public string? FileNo { get; set; }
         public string Address { get; set; } = null!;
         public string DateOfBirth { get; set; } = null!; // ISO date string from client
         public string Gender { get; set; } = null!;
@@ -23,6 +23,17 @@ namespace Clinic.Web.Models.DTOs
         public int? DoctorId { get; set; }
         public DateTime? StartTime { get; set; }
         public int? DurationInMinutes { get; set; }
+        public AppointmentPatientUpdateDto? Patient { get; set; }
+    }
+
+    public class AppointmentPatientUpdateDto
+    {
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
+        public string? FileNo { get; set; }
+        public string? Address { get; set; }
+        public string? DateOfBirth { get; set; }
+        public string? Gender { get; set; }
     }
 
 }

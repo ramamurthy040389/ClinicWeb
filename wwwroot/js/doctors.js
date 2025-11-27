@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 let bsModalInstance = null;
+let doctorsCurrentPage = 1;
+const doctorsPageSize = 6;
 
 function initDoctorsPage() {
     loadDoctors();
@@ -12,10 +14,24 @@ function initDoctorsPage() {
     bsModalInstance = new bootstrap.Modal(modalEl);
     const form = document.getElementById('doctorForm');
     const btnNew = document.getElementById('btnNewDoctor');
+    const btnSearch = document.getElementById('btnDoctorSearch');
+    const searchInput = document.getElementById('doctorSearch');
 
     btnNew.addEventListener('click', () => {
         openModalForNew();
         bsModalInstance.show();
+    });
+
+    btnSearch?.addEventListener('click', () => {
+        doctorsCurrentPage = 1;
+        loadDoctors();
+    });
+
+    searchInput?.addEventListener('keyup', (e) => {
+        if (e.key === 'Enter') {
+            doctorsCurrentPage = 1;
+            loadDoctors();
+        }
     });
 
     form.addEventListener('submit', async (e) => {
@@ -26,9 +42,7 @@ function initDoctorsPage() {
                 bsModalInstance.hide();
                 await loadDoctors();
             }
-            // If saveDoctor returns false (validation failed), keep modal open
         } catch (err) {
-            // If saveDoctor throws (network/server error), keep modal open to show error
             console.error('Save error:', err);
         }
     });
@@ -38,22 +52,78 @@ async function loadDoctors() {
     const listEl = document.getElementById('doctorsList');
     listEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2 text-muted">Loading doctors...</p></div>';
     try {
-        const r = await fetch('/api/doctors');
+        const search = document.getElementById('doctorSearch')?.value.trim();
+        const params = new URLSearchParams({
+            page: doctorsCurrentPage.toString(),
+            pageSize: doctorsPageSize.toString()
+        });
+        if (search) params.append('search', search);
+
+        const r = await fetch('/api/doctors/admin?' + params.toString(), { credentials: 'same-origin' });
+        if (r.status === 401 || r.status === 403) {
+            window.location.href = '/Account/Login?returnUrl=' + encodeURIComponent(window.location.pathname);
+            return;
+        }
         if (!r.ok) {
             listEl.innerHTML = '<div class="text-center py-5"><i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i><p class="mt-3 text-danger">Failed to load doctors</p></div>';
             return;
         }
-        const arr = await r.json();
+        const data = await r.json();
+        const arr = data.items || data.Items || [];
         if (!arr.length) {
-            listEl.innerHTML = '<div class="text-center py-5"><i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i><p class="mt-3 text-muted">No doctors yet. Click "New Doctor" to add one.</p></div>';
+            listEl.innerHTML = '<div class="text-center py-5"><i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i><p class="mt-3 text-muted">No doctors found. Try adjusting your search.</p></div>';
+            renderDoctorsPagination(data);
             return;
         }
         listEl.innerHTML = arr.map(d => doctorItemHtml(d)).join('');
         document.querySelectorAll('.edit-doctor').forEach(btn => btn.addEventListener('click', onEdit));
         document.querySelectorAll('.delete-doctor').forEach(btn => btn.addEventListener('click', onDelete));
+        renderDoctorsPagination(data);
     } catch (err) {
         listEl.innerHTML = '<div class="text-center py-5"><i class="bi bi-exclamation-triangle text-danger" style="font-size: 3rem;"></i><p class="mt-3 text-danger">Error: ' + escapeHtml(err.message) + '</p></div>';
     }
+}
+
+function renderDoctorsPagination(data) {
+    const nav = document.getElementById('doctorsPagination');
+    if (!nav) return;
+    const totalPages = data.totalPages ?? data.TotalPages ?? 0;
+    if (!totalPages || totalPages <= 1) {
+        nav.innerHTML = '';
+        return;
+    }
+
+    let html = '<ul class="pagination justify-content-center">';
+    html += `<li class="page-item ${doctorsCurrentPage === 1 ? 'disabled' : ''}">
+        <a class="page-link" href="#" data-page="${doctorsCurrentPage - 1}">Previous</a>
+    </li>`;
+
+    for (let i = 1; i <= data.totalPages; i++) {
+        if (i === 1 || i === data.totalPages || (i >= doctorsCurrentPage - 2 && i <= doctorsCurrentPage + 2)) {
+            html += `<li class="page-item ${i === doctorsCurrentPage ? 'active' : ''}">
+                <a class="page-link" href="#" data-page="${i}">${i}</a>
+            </li>`;
+        } else if (i === doctorsCurrentPage - 3 || i === doctorsCurrentPage + 3) {
+            html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+        }
+    }
+
+    html += `<li class="page-item ${doctorsCurrentPage === totalPages ? 'disabled' : ''}">
+        <a class="page-link" href="#" data-page="${doctorsCurrentPage + 1}">Next</a>
+    </li>`;
+    html += '</ul>';
+
+    nav.innerHTML = html;
+    nav.querySelectorAll('.page-link[data-page]').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = parseInt(e.target.getAttribute('data-page'));
+            if (page > 0 && page <= totalPages) {
+                doctorsCurrentPage = page;
+                loadDoctors();
+            }
+        });
+    });
 }
 
 function doctorItemHtml(d) {

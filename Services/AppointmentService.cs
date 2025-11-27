@@ -2,6 +2,7 @@ using Clinic.Web.Data;
 using Clinic.Web.Models;
 using Clinic.Web.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
+using System;
 using System.Text.RegularExpressions;
 
 namespace Clinic.Web.Services
@@ -63,13 +64,6 @@ namespace Clinic.Web.Services
             {
                 result.Success = false;
                 result.Message = "Patient name is required.";
-                return result;
-            }
-
-            if (string.IsNullOrWhiteSpace(req.Patient.FileNo))
-            {
-                result.Success = false;
-                result.Message = "Patient file number is required.";
                 return result;
             }
 
@@ -179,67 +173,30 @@ namespace Clinic.Web.Services
                 return result;
             }
 
-            // Insert or reuse patient record.
-            // Prefer matching by FileNo (required field), otherwise match by phone (digits) or create new.
-            Patient patient = null;
-
-            patient = await _db.Patients.FirstOrDefaultAsync(p => p.FileNo == req.Patient.FileNo);
-
-            if (patient == null)
+            // Always create a dedicated patient record for this booking.
+            var requestedFileNo = string.IsNullOrWhiteSpace(req.Patient.FileNo) ? null : req.Patient.FileNo.Trim();
+            if (!string.IsNullOrWhiteSpace(requestedFileNo))
             {
-                // try by phone (normalize DB phone similarly if needed)
-                patient = await _db.Patients.FirstOrDefaultAsync(p => (p.Phone ?? "") == phoneDigits);
+                var exists = await _db.Patients.AnyAsync(p => p.FileNo == requestedFileNo);
+                if (exists)
+                {
+                    result.Success = false;
+                    result.Message = "File number is already in use.";
+                    return result;
+                }
             }
 
-            if (patient == null)
+            var patient = new Patient
             {
-                patient = new Patient
-                {
-                    FileNo = req.Patient.FileNo.Trim(),
-                    Name = req.Patient.Name.Trim(),
-                    Phone = phoneDigits,
-                    Address = req.Patient.Address.Trim(),
-                    DateOfBirth = dateOfBirth.Date,
-                    Gender = req.Patient.Gender.Trim()
-                };
-                _db.Patients.Add(patient);
-                await _db.SaveChangesAsync();
-            }
-            else
-            {
-                // update patient details if missing or changed
-                var changed = false;
-                if (string.IsNullOrWhiteSpace(patient.Name) && !string.IsNullOrWhiteSpace(req.Patient.Name))
-                {
-                    patient.Name = req.Patient.Name.Trim();
-                    changed = true;
-                }
-                if (string.IsNullOrWhiteSpace(patient.Phone) && !string.IsNullOrWhiteSpace(phoneDigits))
-                {
-                    patient.Phone = phoneDigits;
-                    changed = true;
-                }
-                if (string.IsNullOrWhiteSpace(patient.Address) && !string.IsNullOrWhiteSpace(req.Patient.Address))
-                {
-                    patient.Address = req.Patient.Address.Trim();
-                    changed = true;
-                }
-                if (patient.DateOfBirth == default(DateTime) && dateOfBirth != default(DateTime))
-                {
-                    patient.DateOfBirth = dateOfBirth.Date;
-                    changed = true;
-                }
-                if (string.IsNullOrWhiteSpace(patient.Gender) && !string.IsNullOrWhiteSpace(req.Patient.Gender))
-                {
-                    patient.Gender = req.Patient.Gender.Trim();
-                    changed = true;
-                }
-                if (changed)
-                {
-                    _db.Patients.Update(patient);
-                    await _db.SaveChangesAsync();
-                }
-            }
+                FileNo = requestedFileNo,
+                Name = req.Patient.Name.Trim(),
+                Phone = phoneDigits,
+                Address = req.Patient.Address.Trim(),
+                DateOfBirth = dateOfBirth.Date,
+                Gender = req.Patient.Gender.Trim()
+            };
+            _db.Patients.Add(patient);
+            await _db.SaveChangesAsync();
 
             // create appointment
             var appointment = new Appointment
@@ -258,5 +215,6 @@ namespace Clinic.Web.Services
             result.AppointmentId = appointment.Id;
             return result;
         }
+
     }
 }

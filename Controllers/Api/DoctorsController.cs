@@ -1,5 +1,6 @@
 using Clinic.Web.Data;
 using Clinic.Web.Models;
+using Clinic.Web.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,44 @@ namespace Clinic.Web.Controllers.Api
                 .ToListAsync();
 
             return Ok(list);
+        }
+
+        // GET /api/doctors/admin?page=1&pageSize=10&search=cardio
+        [HttpGet("admin")]
+        public async Task<IActionResult> GetPaged([FromQuery] DoctorQueryParameters q)
+        {
+            if (q.Page <= 0) q.Page = 1;
+            if (q.PageSize <= 0) q.PageSize = 10;
+            if (q.PageSize > 100) q.PageSize = 100;
+
+            var baseQuery = _db.Doctors.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(q.Search))
+            {
+                var search = q.Search.Trim().ToLower();
+                baseQuery = baseQuery.Where(d =>
+                    d.Name.ToLower().Contains(search) ||
+                    d.Specialization.ToLower().Contains(search));
+            }
+
+            var totalCount = await baseQuery.CountAsync();
+
+            var items = await baseQuery
+                .OrderBy(d => d.Name)
+                .Skip((q.Page - 1) * q.PageSize)
+                .Take(q.PageSize)
+                .Select(d => new { d.Id, d.Name, d.Specialization })
+                .ToListAsync();
+
+            var paged = new PagedResult<object>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = q.Page,
+                PageSize = q.PageSize
+            };
+
+            return Ok(paged);
         }
 
         // GET /api/doctors/{id}

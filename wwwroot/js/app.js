@@ -12,11 +12,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const doctorSelect = document.getElementById("doctorSelect");
     const dateInput = document.getElementById("date");
+    if (doctorSelect && dateInput) {
+        doctorSelect.addEventListener("change", showAvailableSlots);
+        dateInput.addEventListener("change", showAvailableSlots);
+    }
 
-    doctorSelect.addEventListener("change", showAvailableSlots);
-    dateInput.addEventListener("change", showAvailableSlots);
-
-    document.getElementById("bookingForm").addEventListener("submit", bookAppointment);
+    const bookingForm = document.getElementById("bookingForm");
+    if (bookingForm) {
+        bookingForm.addEventListener("submit", bookAppointment);
+    }
 });
 
 
@@ -56,54 +60,6 @@ async function initBookingPage() {
     await loadDoctors('#doctorSelect');
     document.getElementById('date').addEventListener('change', showAvailableSlots);
     document.getElementById('doctorSelect').addEventListener('change', showAvailableSlots);
-    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const doctorId = Number(document.getElementById('doctorSelect').value);
-        const date = document.getElementById('date').value;
-        const time = document.getElementById('time').value;
-        const patientName = document.getElementById('patientName').value.trim();
-        const fileNo = document.getElementById('fileNo').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const address = document.getElementById('address').value.trim();
-        const dob = document.getElementById('dob').value.trim();
-        const gender = document.getElementById('gender').value.trim();
-
-        // Validation
-        if (!date || !time) { showResult('Pick date and time'); return; }
-        if (!patientName) { showResult('Please enter patient name'); return; }
-        if (!fileNo) { showResult('Please enter file number'); return; }
-        if (!phone) { showResult('Please enter phone number'); return; }
-        if (!/^\d+$/.test(phone)) { showResult('Phone number must contain digits only (0-9)'); return; }
-        if (!address) { showResult('Please enter address'); return; }
-        if (!dob) { showResult('Please enter date of birth'); return; }
-        if (!gender) { showResult('Please select a gender'); return; }
-
-        const startIso = new Date(date + 'T' + time).toISOString();
-        const payload = {
-            doctorId: doctorId,
-            startTime: startIso,
-            durationInMinutes: Number(document.getElementById('duration').value),
-            patient: {
-                name: patientName,
-                phone: phone,
-                fileNo: fileNo,
-                address: address,
-                dateOfBirth: dob,
-                gender: gender
-            }
-        };
-        try {
-            const res = await fetch('/api/appointments', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            if (res.ok) {
-                const data = await res.json();
-                showResult('Booked successfully (id: ' + (data?.appointmentId ?? '') + ')', true);
-                showAvailableSlots();
-            } else {
-                const txt = await res.text();
-                showResult('Error: ' + txt);
-            }
-        } catch (err) { showResult('Network error: ' + err.message); }
-    });
 }
 
 async function loadDoctors(selectSelector) {
@@ -118,6 +74,7 @@ async function loadDoctors(selectSelector) {
 
 async function loadDoctors() {
     const sel = document.getElementById("doctorSelect");
+    if (!sel) return;
     sel.innerHTML = `<option>Loading...</option>`;
 
     const r = await fetch("/api/doctors");
@@ -220,6 +177,12 @@ async function bookAppointment(e) {
     const gender = document.getElementById("gender").value.trim();
 
     const resultEl = document.getElementById("bookingResult");
+    const submitBtn = document.getElementById("bookingSubmitBtn");
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Booking...';
+    }
     resultEl.className = '';
     resultEl.textContent = '';
 
@@ -227,7 +190,6 @@ async function bookAppointment(e) {
     if (!doctorId) return showError("Please select a doctor.");
     if (!iso && (!dateVal || !timeVal)) return showError("Please select or pick a date and time.");
     if (!patientName) return showError("Please enter patient name.");
-    if (!fileNo) return showError("Please enter file number.");
     if (!phone) return showError("Please enter phone number.");
     if (!/^\d+$/.test(phone)) return showError("Phone number must contain digits only (0-9).");
     if (!address) return showError("Please enter address.");
@@ -243,16 +205,19 @@ async function bookAppointment(e) {
     }
 
     // final future check
-    if (new Date(startIso) <= new Date()) return showError("Selected time must be in the future.");
+    if (new Date(startIso) <= new Date()) {
+        enableSubmit();
+        return showError("Selected time must be in the future.");
+    }
 
     const payload = {
         doctorId,
         startTime: startIso,
         durationInMinutes: duration,
-        patient: {
-            name: patientName,
-            phone: phone,
-            fileNo: fileNo,
+        patient: { 
+            name: patientName, 
+            phone: phone, 
+            fileNo: fileNo || null,
             address: address,
             dateOfBirth: dob,
             gender: gender
@@ -269,11 +234,7 @@ async function bookAppointment(e) {
         if (resp.ok) {
             resultEl.className = 'text-success';
             resultEl.textContent = 'Appointment booked successfully!';
-            // reload after 1 second
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
-            // clear selection and refresh slots
+            setTimeout(() => window.location.reload(), 1000);
             document.getElementById("selectedSlotIso").value = '';
             document.querySelectorAll('.slot-btn.active').forEach(x => x.classList.remove('active'));
             await showAvailableSlots();
@@ -328,17 +289,27 @@ async function bookAppointment(e) {
         console.error(err);
         showError("Network error while booking. Please try again.");
     }
+    enableSubmit();
 
     // helper to set plain text error
     function showError(msg) {
+        enableSubmit();
         resultEl.className = 'text-danger';
         resultEl.textContent = msg;
     }
 
     // helper to set html (for multiple lines)
     function showHtmlError(html) {
+        enableSubmit();
         resultEl.className = 'text-danger';
         resultEl.innerHTML = html;
+    }
+
+    function enableSubmit() {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+        }
     }
 
     // simple escape helper
@@ -374,20 +345,33 @@ async function initPatientSearch() {
 }
 
 async function loadAdminAppointments() {
-    const r = await fetch('/api/appointments');
-    const list = await r.json();
     const container = document.getElementById('adminAppointmentsList');
-    if (!list.items?.length) { container.innerText = 'No appointments'; return; }
-    container.innerHTML = list.items.map(a => `<div class="d-flex justify-content-between align-items-center border p-2 mb-1"><div><strong>${new Date(a.startTime).toLocaleString()}</strong> — ${escapeHtml(a.doctor)} — ${escapeHtml(a.patient)} (FileNo:${escapeHtml(a.fileNo)})</div><div><button class="btn btn-sm btn-danger" data-id="${a.id}">Cancel</button></div></div>`).join('');
-    container.querySelectorAll('button[data-id]').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.currentTarget.getAttribute('data-id');
-            if (!confirm('Cancel appointment #' + id + '?')) return;
-            const d = await fetch('/api/appointments/' + id, { method: 'DELETE' });
-            if (d.status === 204) loadAdminAppointments();
-            else alert('Cancel failed');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center py-3">Loading...</div>';
+
+    try {
+        const r = await fetch('/api/appointments', { credentials: 'same-origin' });
+        if (!r.ok) {
+            container.innerText = 'Could not load appointments';
+            return;
+        }
+        const list = await r.json();
+        const items = list.items || list.Items || [];
+        if (!items.length) { container.innerText = 'No appointments'; return; }
+        container.innerHTML = items.map(a => `<div class="d-flex justify-content-between align-items-center border p-2 mb-1"><div><strong>${new Date(a.startTime).toLocaleString()}</strong> — ${escapeHtml(a.doctor)}</div></div>`).join('');
+        container.querySelectorAll('button[data-id]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const id = e.currentTarget.getAttribute('data-id');
+                if (!confirm('Cancel appointment #' + id + '?')) return;
+                const d = await fetch('/api/appointments/' + id, { method: 'DELETE' });
+                if (d.status === 204) loadAdminAppointments();
+                else alert('Cancel failed');
+            });
         });
-    });
+    } catch (err) {
+        container.innerText = 'Error loading appointments';
+    }
 }
 
 function escapeHtml(s) { return s ? s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;') : ''; }
